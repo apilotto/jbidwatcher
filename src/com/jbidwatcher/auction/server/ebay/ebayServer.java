@@ -29,6 +29,7 @@ import com.jbidwatcher.auction.server.AuctionServer;
 import java.net.URL;
 import java.util.*;
 import java.util.List;
+import java.util.concurrent.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.io.FileNotFoundException;
@@ -53,6 +54,12 @@ public final class ebayServer extends AuctionServer implements MessageQueue.List
 
   /**< The amount of time to adjust the system clock by, to make it be nearly second-accurate to eBay time. */
   private long mOfficialServerTimeDelta;
+
+    /** Executor for various timed tasks */
+    private final ScheduledExecutorService executorService = Executors.newScheduledThreadPool(2);
+
+    /** Keeps track of the mean time delta between us and eBay */
+    private final TimeDeltaManager timeDeltaManager = new TimeDeltaManager();
 
   /**< The time zone the auction server is in (for eBay this will be PST or PDT). */
   private TimeZone mOfficialServerTimeZone;
@@ -420,6 +427,13 @@ public final class ebayServer extends AuctionServer implements MessageQueue.List
     MQFactory.getConcrete(getFriendlyName()).registerListener(this);
 
     JConfig.registerListener(this);
+
+      /* now start the eBay server time request task */
+      executorService.scheduleAtFixedRate(new Runnable() {
+          public void run() {
+              getOfficialTime();
+          }
+      },30000,60000,TimeUnit.MILLISECONDS);
   }
 
   /**
@@ -770,8 +784,10 @@ public final class ebayServer extends AuctionServer implements MessageQueue.List
     UpdateBlocker.startBlocking();
     String timeRequest = Externalized.getString("ebayServer.timeURL");
 
-    JHTML htmlDocument = new JHTML(timeRequest, null, mCleaner);
-    long localDateAfterPage = System.currentTimeMillis();
+      long start = System.currentTimeMillis();
+      JHTML htmlDocument = new JHTML(timeRequest, null, mCleaner);
+      long localDateAfterPage = System.currentTimeMillis();
+      JConfig.log().logMessage("Time for eBay request for system time: " + (localDateAfterPage-start) + "ms");
 
     ZoneDate result = null;
 
@@ -783,6 +799,11 @@ public final class ebayServer extends AuctionServer implements MessageQueue.List
       pageStep = htmlDocument.getNextContent();
     }
 
+//      if (result!=null) {
+//          JConfig.log().logMessage("eBay system time is " + result.getDate());
+//          JConfig.log().logMessage("start time for request was " + new Date(start));
+//      }
+
     UpdateBlocker.endBlocking();
 
     //  If we couldn't get a number, clear the page request time.
@@ -793,8 +814,6 @@ public final class ebayServer extends AuctionServer implements MessageQueue.List
       mOfficialServerTimeDelta = 1;
       return null;
     } else {
-      //  reqTime will always be positive; it's how long it took to request, receive, and pre-parse the eBay page.
-//      long reqTime = localDateAfterPage - localDateBeforePage;
 
       //  It looks like the best time to use is the time _after_ we've loaded the page, under the presumption that the delays
       //  in returning the time page are front-loaded.  Specifically, we don't want to get the difference from the time before
@@ -804,10 +823,13 @@ public final class ebayServer extends AuctionServer implements MessageQueue.List
       //
       //  Subtract what time eBay thinks it is, from what time the local computer thinks it is to get the amount we add to the local
       //  clock to get the server clock.
-      mOfficialServerTimeDelta = (result.getDate().getTime() - localDateAfterPage);
+        /** Angelo */
+        long currentDelta = (result.getDate().getTime() - localDateAfterPage);
+        mOfficialServerTimeDelta = timeDeltaManager.add(currentDelta);
 
-//      //  Subtract half the request time, under the belief that eBay instantiated its date/time halfway through the request.
-//      mOfficialServerTimeDelta -= reqTime / 2;
+        JConfig.log().logMessage("Current time delta is " + currentDelta + " using mean delta of " + mOfficialServerTimeDelta);
+
+//      mOfficialServerTimeDelta = (result.getDate().getTime() - localDateAfterPage);
 
       //  mOSTD of 0 is a sentinel that we haven't gotten the official time yet, so if we magically get it, make it 1ms instead.
       if(mOfficialServerTimeDelta == 0) mOfficialServerTimeDelta = 1;
@@ -819,4 +841,76 @@ public final class ebayServer extends AuctionServer implements MessageQueue.List
 
     return result.getDate();
   }
+
+    /**
+     * Angelo
+     * Class that keeps track of all of our delta samples. We keep the latest ones and
+     * use the mean as our "official" server time delta.
+     */
+    private static class TimeDeltaManager {
+        private volatile long[] samples;
+        private final int maxSamples;
+
+        public TimeDeltaManager() {
+            this(11);
+        }
+
+        public TimeDeltaManager(int maxSamples) {
+            this.maxSamples = maxSamples;
+            this.samples = new long[0];
+        }
+
+        public long add(long delta) {
+            long[] oldSamples = this.samples;
+            int newLength = oldSamples.length+1;
+            if (newLength>maxSamples) { /* need to cut out first element */
+                oldSamples = Arrays.copyOfRange(oldSamples,1,oldSamples.length);
+                newLength=maxSamples;
+            }
+
+            final long[] newSamples = Arrays.copyOf(oldSamples,newLength);
+            newSamples[newSamples.length-1]=delta;
+            this.samples = newSamples;
+            return calculateMedian();
+        }
+
+        private long calculateMedian() {
+            long[] copy = Arrays.copyOf(samples,samples.length);
+            Arrays.sort(copy);
+            int idx = (int)Math.floor(copy.length/2);
+            return copy[idx];
+        }
+    }
+
+//    public static void main(String[] args) {
+//        TimeDeltaManager tdm = new TimeDeltaManager(5);
+//        long mean;
+//
+//        mean = tdm.add(500);
+//        System.out.println(mean);
+//        mean = tdm.add(200);
+//        System.out.println(mean);
+//        mean = tdm.add(400);
+//        System.out.println(mean);
+//        mean = tdm.add(300);
+//        System.out.println(mean);
+//        mean = tdm.add(100);
+//        System.out.println(mean);
+//        mean = tdm.add(600);
+//        System.out.println(mean);
+//        mean = tdm.add(250);
+//        System.out.println(mean);
+//
+//        mean = tdm.add(250);
+//        System.out.println(mean);
+//        mean = tdm.add(250);
+//        System.out.println(mean);
+//        mean = tdm.add(250);
+//        System.out.println(mean);
+//        mean = tdm.add(250);
+//        System.out.println(mean);
+//        mean = tdm.add(250);
+//        System.out.println(mean);
+//
+//    }
 }

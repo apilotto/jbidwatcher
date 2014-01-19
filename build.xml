@@ -231,7 +231,8 @@
         </replacetokens>
       </filterchain>
     </copy>
-    <exec executable="launch4j" failonerror="true">
+<!--    <exec executable="launch4j" failonerror="true"> -->
+    <exec executable="/home/angelo/software/launch4j/launch4j" failonerror="true">
       <arg line="/tmp/jbidwatcher-launch.xml"/>
     </exec>
     <delete file="/tmp/jbidwatcher-launch.xml"/>

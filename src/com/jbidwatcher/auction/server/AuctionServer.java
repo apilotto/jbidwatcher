@@ -123,7 +123,8 @@ public abstract class AuctionServer implements AuctionServerInterface {
    * block until it's done getting the time.
    */
   public void reloadTime() {
-    if (getOfficialTime() != null) {
+      Date officialTime = getOfficialTime();
+      if (officialTime != null) {
       MQFactory.getConcrete("Swing").enqueue("Successfully synchronized time with " + getFriendlyName() + '.');
       JConfig.log().logMessage("Time delta with " + getFriendlyName() + " is " + getServerTimeDelta());
     } else {

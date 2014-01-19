@@ -42,7 +42,9 @@ public class TimeQueueManager implements TimerHandler.WakeupProcess {
 
   public boolean check() {
     Object deQ;
-    while( (deQ = mTQ.getAnyLessThan(getCurrentTime()+900)) != null) {
+      /** Angelo */
+//    while( (deQ = mTQ.getAnyLessThan(getCurrentTime()+900)) != null) {
+      while( (deQ = mTQ.getAnyLessThan(getCurrentTime()+400)) != null) {
       TQCarrier interim = (TQCarrier) deQ;
       MessageQueue q = MQFactory.getConcrete(interim.getDestinationQueue());
 

@@ -25,10 +25,13 @@ import com.jbidwatcher.util.config.JConfig;
  */
 
 public class TimerHandler extends Thread {
+    private static final int SLEEP_TIME = 450;
   private static final int ALMOST_A_SECOND = 990;
   private WakeupProcess _toWake = null;
   private volatile boolean _remainAsleep = false;
-  private long _sleep_ms = ALMOST_A_SECOND;
+    /** Angelo */
+//  private long _sleep_ms = ALMOST_A_SECOND;
+    private final long _sleep_ms;
 
   public interface WakeupProcess {
     boolean check() throws InterruptedException;
@@ -41,8 +44,10 @@ public class TimerHandler extends Thread {
   }
 
   public TimerHandler(WakeupProcess inWake) {
-    _toWake = inWake;
-    setDaemon(true);
+      this(inWake,SLEEP_TIME);
+      /** Angelo */
+//    _toWake = inWake;
+//    setDaemon(true);
   }
 
   public void pause() { _remainAsleep = true; }

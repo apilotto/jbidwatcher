@@ -411,6 +411,7 @@ public final class UIBackbone implements MessageQueue.Listener {
    * @brief Show the time once a second, in strikeout if the link to
    * the default auction server is down.
    */
+  long repeat=0;
   void checkClock() {
     long now = System.currentTimeMillis();
     if (lastTime != 0) {
