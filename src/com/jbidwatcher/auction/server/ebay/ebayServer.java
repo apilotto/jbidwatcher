@@ -881,36 +881,4 @@ public final class ebayServer extends AuctionServer implements MessageQueue.List
             return copy[idx];
         }
     }
-
-//    public static void main(String[] args) {
-//        TimeDeltaManager tdm = new TimeDeltaManager(5);
-//        long mean;
-//
-//        mean = tdm.add(500);
-//        System.out.println(mean);
-//        mean = tdm.add(200);
-//        System.out.println(mean);
-//        mean = tdm.add(400);
-//        System.out.println(mean);
-//        mean = tdm.add(300);
-//        System.out.println(mean);
-//        mean = tdm.add(100);
-//        System.out.println(mean);
-//        mean = tdm.add(600);
-//        System.out.println(mean);
-//        mean = tdm.add(250);
-//        System.out.println(mean);
-//
-//        mean = tdm.add(250);
-//        System.out.println(mean);
-//        mean = tdm.add(250);
-//        System.out.println(mean);
-//        mean = tdm.add(250);
-//        System.out.println(mean);
-//        mean = tdm.add(250);
-//        System.out.println(mean);
-//        mean = tdm.add(250);
-//        System.out.println(mean);
-//
-//    }
 }
